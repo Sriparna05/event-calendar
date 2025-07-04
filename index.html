@@ -150,7 +150,10 @@
             const calendarEl = document.getElementById('calendar'), adminPanel = document.getElementById('adminPanel'), calendarContainer = document.getElementById('calendarContainer'),
                   adminToggle = document.getElementById('adminToggle'), eventForm = document.getElementById('eventForm'), formTitle = document.getElementById('formTitle'),
                   eventIdInput = document.getElementById('eventId'), deleteButton = document.getElementById('deleteButton'), cancelButton = document.getElementById('cancelButton'),
-                  filterCheckboxes = document.querySelectorAll('.filter-checkbox'), API_URL = 'http://localhost:3000/api/events';
+                  filterCheckboxes = document.querySelectorAll('.filter-checkbox');
+                  
+            // --- UPDATED FOR PRODUCTION ---
+            const API_URL = 'https://event-calendar-s7cb.onrender.com/api/events';
 
             const eventColors = {
                 Webinar: 'var(--event-webinar)', Assignment: 'var(--event-assignment)', Workshop: 'var(--event-workshop)',
