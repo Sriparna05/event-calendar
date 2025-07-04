@@ -95,58 +95,47 @@
         .fc-day-today { background-color: var(--fc-today-bg-color) !important; }
         .fc-list-day-text, .fc-list-day-side-text, .fc-col-header-cell-cushion { color: var(--text-muted-color); }
         .fc-event-main { color: white !important; }
+        .hide-Webinar .event-Webinar, .hide-Assignment .event-Assignment, .hide-Workshop .event-Workshop, .hide-Personal-Family .event-Personal-Family, .hide-Business .event-Business, .hide-Trip .event-Trip, .hide-Other .event-Other {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
-
     <header>
         <h1>Event Calendar</h1>
         <div class="controls-container">
             <div class="filter-group">
-                 <!-- Filters will be made functional later -->
+                <label><input type="checkbox" class="filter-checkbox" value="Webinar" checked> Webinar</label>
+                <label><input type="checkbox" class="filter-checkbox" value="Assignment" checked> Assignment</label>
+                <label><input type="checkbox" class="filter-checkbox" value="Workshop" checked> Workshop</label>
+                <label><input type="checkbox" class="filter-checkbox" value="Personal-Family" checked> Family</label>
+                <label><input type="checkbox" class="filter-checkbox" value="Business" checked> Business</label>
+                <label><input type="checkbox" class="filter-checkbox" value="Trip" checked> Trip</label>
+                <label><input type="checkbox" class="filter-checkbox" value="Other" checked> Other</label>
             </div>
             <div class="admin-toggle">
                 <span>Admin Panel</span>
-                <label class="switch">
-                    <input type="checkbox" id="adminToggle">
-                    <span class="slider"></span>
-                </label>
+                <label class="switch"><input type="checkbox" id="adminToggle"><span class="slider"></span></label>
             </div>
         </div>
     </header>
 
     <div class="main-container">
-        <div class="calendar-container" id="calendarContainer">
-            <div id="calendar"></div>
-        </div>
+        <div class="calendar-container" id="calendarContainer"><div id="calendar"></div></div>
         <div class="admin-panel" id="adminPanel">
             <h3 id="formTitle">Add Event</h3>
             <form id="eventForm">
                 <input type="hidden" id="eventId">
-                <div class="form-group">
-                    <label for="eventTitle">Title</label>
-                    <input type="text" id="eventTitle" required>
-                </div>
+                <div class="form-group"><label for="eventTitle">Title</label><input type="text" id="eventTitle" required></div>
                 <div class="form-group">
                     <label for="eventType">Type</label>
                     <select id="eventType" required>
-                        <option value="Webinar">Webinar</option>
-                        <option value="Assignment">Assignment</option>
-                        <option value="Workshop">Workshop</option>
-                        <option value="Personal-Family">Personal/Family</option>
-                        <option value="Business">Business</option>
-                        <option value="Trip">Trip</option>
-                        <option value="Other">Other</option>
+                        <option value="Webinar">Webinar</option><option value="Assignment">Assignment</option><option value="Workshop">Workshop</option>
+                        <option value="Personal-Family">Personal/Family</option><option value="Business">Business</option><option value="Trip">Trip</option><option value="Other">Other</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="eventStart">Start</label>
-                    <input type="datetime-local" id="eventStart" required>
-                </div>
-                <div class="form-group">
-                    <label for="eventEnd">End</label>
-                    <input type="datetime-local" id="eventEnd" required>
-                </div>
+                <div class="form-group"><label for="eventStart">Start</label><input type="datetime-local" id="eventStart" required></div>
+                <div class="form-group"><label for="eventEnd">End</label><input type="datetime-local" id="eventEnd" required></div>
                 <div class="button-group">
                     <button type="submit" class="button btn-save">Save</button>
                     <button type="button" class="button btn-delete hidden" id="deleteButton">Delete</button>
@@ -158,33 +147,20 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- DOM Elements ---
-            const calendarEl = document.getElementById('calendar');
-            const adminPanel = document.getElementById('adminPanel');
-            const calendarContainer = document.getElementById('calendarContainer');
-            const adminToggle = document.getElementById('adminToggle');
-            const eventForm = document.getElementById('eventForm');
-            const formTitle = document.getElementById('formTitle');
-            const eventIdInput = document.getElementById('eventId');
-            const deleteButton = document.getElementById('deleteButton');
-            const cancelButton = document.getElementById('cancelButton');
-            
-            const API_URL = 'http://localhost:3000/api/events';
+            const calendarEl = document.getElementById('calendar'), adminPanel = document.getElementById('adminPanel'), calendarContainer = document.getElementById('calendarContainer'),
+                  adminToggle = document.getElementById('adminToggle'), eventForm = document.getElementById('eventForm'), formTitle = document.getElementById('formTitle'),
+                  eventIdInput = document.getElementById('eventId'), deleteButton = document.getElementById('deleteButton'), cancelButton = document.getElementById('cancelButton'),
+                  filterCheckboxes = document.querySelectorAll('.filter-checkbox'), API_URL = 'http://localhost:3000/api/events';
 
             const eventColors = {
                 Webinar: 'var(--event-webinar)', Assignment: 'var(--event-assignment)', Workshop: 'var(--event-workshop)',
                 'Personal-Family': 'var(--event-personal-family)', Business: 'var(--event-business)', Trip: 'var(--event-trip)', Other: 'var(--event-other)'
             };
 
-            // --- FullCalendar Initialization ---
             const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                headerToolbar: {
-                    left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek'
-                },
-                editable: true,
-                selectable: true,
-                events: async function(fetchInfo, successCallback, failureCallback) {
+                initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+                editable: true, selectable: true,
+                events: async (fetchInfo, successCallback, failureCallback) => {
                     try {
                         const response = await fetch(API_URL);
                         const events = await response.json();
@@ -194,79 +170,94 @@
                             className: `event-${(event.type || 'Other').replace('/', '-')}`
                         }));
                         successCallback(formattedEvents);
+                        checkAndNotifyForUpcomingEvents(events);
                     } catch (error) { failureCallback(error); }
                 },
-                select: handleDateSelect,
-                // eventClick will be implemented in the next phase
+                select: handleDateSelect, eventClick: handleEventClick
             });
             calendar.render();
 
-            // --- Event Handlers ---
-            adminToggle.addEventListener('change', () => {
-                adminPanel.classList.toggle('open');
-                calendarContainer.classList.toggle('admin-open');
-            });
-
+            adminToggle.addEventListener('change', () => { adminPanel.classList.toggle('open'); calendarContainer.classList.toggle('admin-open'); });
             eventForm.addEventListener('submit', handleFormSubmit);
-            cancelButton.addEventListener('click', clearForm);
+            deleteButton.addEventListener('click', handleDeleteEvent);
+            cancelButton.addEventListener('click', () => clearForm());
+            filterCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
 
-            // --- Core Functions ---
-            function handleDateSelect(selectInfo) {
-                clearForm(false); // Don't close panel
+            function handleDateSelect(info) {
+                clearForm(false);
                 formTitle.textContent = 'Add Event';
-                document.getElementById('eventStart').value = formatISODate(selectInfo.start);
-                document.getElementById('eventEnd').value = formatISODate(selectInfo.end);
+                document.getElementById('eventStart').value = formatISODate(info.start);
+                document.getElementById('eventEnd').value = formatISODate(info.end);
                 deleteButton.classList.add('hidden');
-                if (!adminPanel.classList.contains('open')) {
-                    adminPanel.classList.add('open');
-                    calendarContainer.classList.add('admin-open');
-                    adminToggle.checked = true;
-                }
+                if (!adminPanel.classList.contains('open')) { adminPanel.classList.add('open'); calendarContainer.classList.add('admin-open'); adminToggle.checked = true; }
+            }
+
+            async function handleEventClick(info) {
+                try {
+                    const res = await fetch(API_URL);
+                    const allEvents = await res.json();
+                    const fullEvent = allEvents.find(e => e.id == info.event.id);
+                    if (!fullEvent) return;
+                    formTitle.textContent = 'Edit Event';
+                    eventIdInput.value = fullEvent.id;
+                    document.getElementById('eventTitle').value = fullEvent.title;
+                    document.getElementById('eventType').value = fullEvent.type;
+                    document.getElementById('eventStart').value = formatISODate(new Date(fullEvent.start));
+                    document.getElementById('eventEnd').value = formatISODate(new Date(fullEvent.end));
+                    deleteButton.classList.remove('hidden');
+                    if (!adminPanel.classList.contains('open')) { adminPanel.classList.add('open'); calendarContainer.classList.add('admin-open'); adminToggle.checked = true; }
+                } catch (error) { console.error("Error fetching event details:", error); }
             }
 
             async function handleFormSubmit(e) {
                 e.preventDefault();
                 const eventData = {
-                    title: document.getElementById('eventTitle').value,
-                    type: document.getElementById('eventType').value,
-                    start: document.getElementById('eventStart').value,
-                    end: document.getElementById('eventEnd').value,
+                    title: document.getElementById('eventTitle').value, type: document.getElementById('eventType').value,
+                    start: document.getElementById('eventStart').value, end: document.getElementById('eventEnd').value,
                 };
-
                 const id = eventIdInput.value;
-                const method = id ? 'PUT' : 'POST'; // Logic for edit is here, but not fully used yet
+                const method = id ? 'PUT' : 'POST';
                 const url = id ? `${API_URL}/${id}` : API_URL;
-
                 try {
-                    await fetch(url, {
-                        method: method,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(eventData),
-                    });
+                    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(eventData) });
                     calendar.refetchEvents();
                     clearForm();
-                } catch (error) {
-                    console.error('Error saving event:', error);
-                }
+                } catch (error) { console.error('Error saving event:', error); }
             }
+
+            async function handleDeleteEvent() {
+                const id = eventIdInput.value;
+                if (!id || !confirm('Are you sure you want to delete this event?')) return;
+                try {
+                    await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                    calendar.refetchEvents();
+                    clearForm();
+                } catch (error) { console.error('Error deleting event:', error); }
+            }
+
+            function applyFilters() { filterCheckboxes.forEach(cb => document.body.classList.toggle(`hide-${cb.value}`, !cb.checked)); }
 
             function clearForm(closePanel = true) {
                 eventForm.reset();
                 eventIdInput.value = '';
                 deleteButton.classList.add('hidden');
                 formTitle.textContent = 'Add Event';
-                if(closePanel) {
-                    adminPanel.classList.remove('open');
-                    calendarContainer.classList.remove('admin-open');
-                    adminToggle.checked = false;
-                }
+                if(closePanel) { adminPanel.classList.remove('open'); calendarContainer.classList.remove('admin-open'); adminToggle.checked = false; }
             }
+
+            function formatISODate(d) { const ten = i => (i < 10 ? '0' : '') + i; return `${d.getFullYear()}-${ten(d.getMonth() + 1)}-${ten(d.getDate())}T${ten(d.getHours())}:${ten(d.getMinutes())}`; }
+
+            function requestNotificationPermission() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }
             
-            function formatISODate(date) {
-                const d = new Date(date);
-                const ten = (i) => (i < 10 ? '0' : '') + i;
-                return `${d.getFullYear()}-${ten(d.getMonth() + 1)}-${ten(d.getDate())}T${ten(d.getHours())}:${ten(d.getMinutes())}`;
+            function checkAndNotifyForUpcomingEvents(events) {
+                if (Notification.permission !== 'granted') return;
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const upcoming = events.filter(e => { const d = new Date(e.start); d.setHours(0, 0, 0, 0); return d.getTime() === today.getTime(); });
+                if (upcoming.length > 0) new Notification(`${upcoming.length} Event(s) Today`, { body: upcoming.map(e => e.title).join(', ') });
             }
+
+            requestNotificationPermission();
+            applyFilters();
         });
     </script>
 </body>
