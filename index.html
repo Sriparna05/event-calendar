@@ -73,7 +73,6 @@
         <h1>Event Calendar</h1>
         <div class="controls-container">
             <div id="main-controls" class="hidden">
-                <!-- Filters and Admin Toggle are now here, hidden until login -->
                 <div class="filter-group">
                     <label><input type="checkbox" class="filter-checkbox" value="Webinar" checked> Webinar</label>
                     <label><input type="checkbox" class="filter-checkbox" value="Assignment" checked> Assignment</label>
@@ -122,7 +121,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         const API_BASE_URL = 'https://event-calendar-s7cb.onrender.com/api';
         
-        // --- DOM Elements ---
         const calendarEl = document.getElementById('calendar');
         const loginButton = document.getElementById('loginButton'), signupButton = document.getElementById('signupButton'), logoutButton = document.getElementById('logoutButton');
         const welcomeMessage = document.getElementById('welcomeMessage'), authModal = document.getElementById('authModal'), closeAuthModal = document.getElementById('closeAuthModal');
@@ -135,15 +133,12 @@
         let isLoginMode = true;
         let calendar;
 
-        // --- Helper for Authenticated API Calls ---
         const authenticatedFetch = async (url, options = {}) => {
             const token = localStorage.getItem('token');
             const headers = { 'Content-Type': 'application/json', ...options.headers };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-            
             const response = await fetch(url, { ...options, headers });
-
-            if(response.status === 401) { // Unauthorized (e.g., token expired)
+            if(response.status === 401) {
                 handleLogout();
                 alert('Your session has expired. Please log in again.');
                 throw new Error('Session expired');
@@ -151,36 +146,29 @@
             return response;
         };
 
-        // --- Auth Functions ---
         const updateUIForAuthState = (isLoggedIn) => {
             loginButton.classList.toggle('hidden', isLoggedIn);
             signupButton.classList.toggle('hidden', isLoggedIn);
             logoutButton.classList.toggle('hidden', !isLoggedIn);
-            mainControls.classList.toggle('hidden', !isLoggedIn); // Show/hide main controls
-
+            mainControls.classList.toggle('hidden', !isLoggedIn);
             if (isLoggedIn) {
                 welcomeMessage.textContent = `Welcome, ${localStorage.getItem('username')}!`;
                 if (!calendar) initializeCalendar();
                 else calendar.refetchEvents();
             } else {
                 welcomeMessage.textContent = '';
-                if (calendar) calendar.destroy(); // Completely remove calendar on logout
+                if (calendar) calendar.destroy();
                 calendar = null;
-                adminPanel.classList.remove('open'); // Close admin panel on logout
+                adminPanel.classList.remove('open');
                 calendarContainer.classList.remove('admin-open');
             }
         };
 
         const handleAuth = async (endpoint, username, password) => {
             try {
-                const response = await fetch(`${API_BASE_URL}/auth/${endpoint}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
-                });
+                const response = await fetch(`${API_BASE_URL}/auth/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }), });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'An error occurred.');
-
                 if (endpoint === 'login') {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('username', data.username);
@@ -193,9 +181,8 @@
             } catch (error) { authError.textContent = error.message; }
         };
         
-        // --- Calendar Initialization and Functions ---
         function initializeCalendar() {
-            if (calendar) calendar.destroy(); // Ensure no duplicates
+            if (calendar) calendar.destroy();
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
@@ -204,7 +191,7 @@
                     try {
                         const response = await authenticatedFetch(`${API_BASE_URL}/events`);
                         const events = await response.json();
-                        successCallback(events);
+                        successCallback(events.map(e => ({...e, title: e.title, type: e.type}))); // Pass type to extendedProps
                     } catch (error) { failureCallback(error); }
                 },
                 select: handleDateSelect,
@@ -226,13 +213,12 @@
             }
         }
 
-        async function handleEventClick(clickInfo) {
-            // We already have event data from the fetch, no need for another API call to get details
+        function handleEventClick(clickInfo) {
             const event = clickInfo.event;
             formTitle.textContent = 'Edit Event';
-            eventIdInput.value = event.id; // FullCalendar uses `id`, our backend returns `id`
+            eventIdInput.value = event.id;
             document.getElementById('eventTitle').value = event.title;
-            document.getElementById('eventType').value = event.extendedProps.type || 'Other'; // Get type from extendedProps
+            document.getElementById('eventType').value = event.extendedProps.type || 'Other';
             document.getElementById('eventStart').value = formatISODate(event.start);
             document.getElementById('eventEnd').value = event.end ? formatISODate(event.end) : formatISODate(event.start);
             deleteButton.classList.remove('hidden');
@@ -245,12 +231,14 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
+            // --- THIS IS THE FIX ---
             const eventData = {
                 title: document.getElementById('eventTitle').value,
                 type: document.getElementById('eventType').value,
-                start: document.getElementById('eventStart').value,
-                end: document.getElementById('eventEnd').value,
+                start: new Date(document.getElementById('eventStart').value).toISOString(),
+                end: new Date(document.getElementById('eventEnd').value).toISOString(),
             };
+            // --- END OF FIX ---
             const id = eventIdInput.value;
             const method = id ? 'PUT' : 'POST';
             const url = id ? `${API_BASE_URL}/events/${id}` : `${API_BASE_URL}/events`;
@@ -285,26 +273,21 @@
             }
         }
 
-        // --- Event Handlers ---
         loginButton.addEventListener('click', () => { isLoginMode = true; updateAuthForm(); authModal.classList.add('visible'); });
         signupButton.addEventListener('click', () => { isLoginMode = false; updateAuthForm(); authModal.classList.add('visible'); });
         logoutButton.addEventListener('click', handleLogout);
-        
         function handleLogout() {
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             updateUIForAuthState(false);
         }
-
         closeAuthModal.addEventListener('click', () => authModal.classList.remove('visible'));
         authToggleLink.addEventListener('click', (e) => { e.preventDefault(); isLoginMode = !isLoginMode; updateAuthForm(); });
-        
         authForm.addEventListener('submit', (e) => {
             e.preventDefault(); authError.textContent = '';
             const username = document.getElementById('username').value, password = document.getElementById('password').value;
             handleAuth(isLoginMode ? 'login' : 'signup', username, password);
         });
-
         adminToggle.addEventListener('change', () => {
             adminPanel.classList.toggle('open');
             calendarContainer.classList.toggle('admin-open');
@@ -327,7 +310,6 @@
             return `${date.getFullYear()}-${ten(date.getMonth() + 1)}-${ten(date.getDate())}T${ten(date.getHours())}:${ten(date.getMinutes())}`;
         }
 
-        // --- Initial State Check ---
         updateUIForAuthState(!!localStorage.getItem('token'));
     });
     </script>
