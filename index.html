@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Calendar</title>
-    <!-- FullCalendar JS & CSS via CDN -->
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <style>
         body { font-family: sans-serif; background-color: #f4f4f4; }
@@ -17,9 +16,27 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendar');
+            const API_URL = 'http://localhost:3000/api/events';
+
             const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth'
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                events: async function(fetchInfo, successCallback, failureCallback) {
+                    try {
+                        const response = await fetch(API_URL);
+                        const events = await response.json();
+                        successCallback(events);
+                    } catch (error) {
+                        console.error('Error fetching events:', error);
+                        failureCallback(error);
+                    }
+                }
             });
+
             calendar.render();
         });
     </script>
