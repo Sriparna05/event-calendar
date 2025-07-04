@@ -6,7 +6,6 @@
     <title>Event Calendar</title>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <style>
-        /* CSS is unchanged */
         :root {
             --bg-color: #1a1a1a; --surface-color: #242424; --primary-color: #4a90e2; --accent-color: #1abc9c;
             --text-color: #f0f0f0; --text-muted-color: #a0a0a0; --border-color: #3a3a3a; --danger-color: #e25d5d;
@@ -59,17 +58,89 @@
         .welcome-container h2 { font-size: 2.5rem; color: var(--accent-color); margin-bottom: 1rem; }
         .welcome-container p { font-size: 1.1rem; color: var(--text-muted-color); max-width: 600px; line-height: 1.6; margin-bottom: 2.5rem; }
         .welcome-container .auth-button { padding: 15px 35px; font-size: 1.2rem; border-radius: 8px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { display: none; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
     </style>
 </head>
 <body>
-    <!-- HTML is unchanged -->
-    <div id="authModal" class="modal-overlay">...</div>
-    <header>...</header>
-    <div class="main-container">...</div>
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" id="closeAuthModal">×</button>
+            <h3 id="authTitle">Login</h3>
+            <form id="authForm">
+                <div class="form-group"><label for="username">Username</label><input type="text" id="username" required></div>
+                <div class="form-group"><label for="password">Password</label><input type="password" id="password" required></div>
+                <div class="button-group"><button type="submit" class="button btn-save" id="authSubmitButton">Login</button></div>
+                <div id="auth-error"></div>
+            </form>
+            <p style="text-align: center; margin-top: 20px; font-size: 0.9em;"><a href="#" id="authToggleLink">Need an account? Sign Up</a></p>
+        </div>
+    </div>
+
+    <header>
+        <h1>Event Calendar</h1>
+        <div class="controls-container">
+            <div id="main-controls" class="hidden">
+                <div class="filter-group">
+                    <label><input type="checkbox" class="filter-checkbox" value="Webinar" checked> Webinar</label>
+                    <label><input type="checkbox" class="filter-checkbox" value="Assignment" checked> Assignment</label>
+                    <label><input type="checkbox" class="filter-checkbox" value="Workshop" checked> Workshop</label>
+                </div>
+                 <div class="admin-toggle">
+                    <span>Admin Panel</span>
+                    <label class="switch"><input type="checkbox" id="adminToggle"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="auth-controls">
+                <span id="welcomeMessage"></span>
+                <button id="loginButton" class="auth-button">Login</button>
+                <button id="signupButton" class="auth-button">Sign Up</button>
+                <button id="logoutButton" class="auth-button hidden">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="calendar-container hidden" id="calendarContainer">
+            <div id="calendar"></div>
+        </div>
+        <div class="welcome-container" id="welcomeScreen">
+            <h2>Welcome to Your Personal Event Calendar</h2>
+            <p>
+                Organize your life, manage events, and never miss a deadline. 
+                Sign up to create your own private calendar, add events, and get reminders. Your schedule, your data, always secure.
+            </p>
+            <button class="auth-button" id="welcomeSignupButton">Get Started - It's Free</button>
+        </div>
+        <div class="admin-panel" id="adminPanel">
+            <h3 id="formTitle">Add Event</h3>
+            <form id="eventForm">
+                <input type="hidden" id="eventId">
+                <div class="form-group"><label for="eventTitle">Title</label><input type="text" id="eventTitle" required></div>
+                <div class="form-group">
+                    <label for="eventType">Type</label>
+                    <select id="eventType" required>
+                        <option value="Webinar">Webinar</option><option value="Assignment">Assignment</option><option value="Workshop">Workshop</option>
+                        <option value="Personal-Family">Personal/Family</option><option value="Business">Business</option><option value="Trip">Trip</option><option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group"><label for="eventStart">Start</label><input type="datetime-local" id="eventStart" required></div>
+                <div class="form-group"><label for="eventEnd">End</label><input type="datetime-local" id="eventEnd" required></div>
+                <div class="button-group">
+                    <button type="submit" class="button btn-save">Save</button>
+                    <button type="button" class="button btn-delete hidden" id="deleteButton">Delete</button>
+                    <button type="button" class="button btn-cancel" id="cancelButton">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // ... (All DOM element declarations are the same)
         const API_BASE_URL = 'https://event-calendar-s7cb.onrender.com/api';
         
         const calendarContainer = document.getElementById('calendarContainer');
@@ -87,7 +158,6 @@
         let isLoginMode = true;
         let calendar;
 
-        // ... (authenticatedFetch function is the same)
         const authenticatedFetch = async (url, options = {}) => {
             const token = localStorage.getItem('token');
             const headers = { 'Content-Type': 'application/json', ...options.headers };
@@ -100,7 +170,7 @@
             }
             return response;
         };
-        // ... (updateUIForAuthState function is the same)
+
         const updateUIForAuthState = (isLoggedIn) => {
             loginButton.classList.toggle('hidden', isLoggedIn);
             signupButton.classList.toggle('hidden', isLoggedIn);
@@ -132,7 +202,7 @@
                     localStorage.setItem('username', data.username);
                     updateUIForAuthState(true);
                     authModal.classList.remove('visible');
-                    requestNotificationPermission(); // --- NEW: Ask for permission on successful login
+                    requestNotificationPermission();
                 } else {
                     alert('Signup successful! Please log in.');
                     isLoginMode = true; updateAuthForm();
@@ -150,7 +220,7 @@
                     try {
                         const response = await authenticatedFetch(`${API_BASE_URL}/events`);
                         const events = await response.json();
-                        checkAndNotifyForUpcomingEvents(events); // --- NEW: Check events for notifications
+                        checkAndNotifyForUpcomingEvents(events);
                         successCallback(events.map(e => ({...e, title: e.title, type: e.type})));
                     } catch (error) { failureCallback(error); }
                 },
@@ -160,7 +230,6 @@
             calendar.render();
         }
 
-        // --- NEW: Notification Functions ---
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission().then(permission => {
@@ -176,16 +245,13 @@
 
         function checkAndNotifyForUpcomingEvents(events) {
             if (Notification.permission !== 'granted') return;
-
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-
             const upcomingEvents = events.filter(event => {
                 const eventDate = new Date(event.start);
                 eventDate.setHours(0, 0, 0, 0);
                 return eventDate.getTime() === today.getTime();
             });
-
             if (upcomingEvents.length > 0) {
                 const eventTitles = upcomingEvents.map(e => e.title).join(', ');
                 new Notification(`You have ${upcomingEvents.length} event(s) today!`, {
@@ -195,7 +261,6 @@
             }
         }
 
-        // ... (All other functions like handleDateSelect, handleFormSubmit, etc., are unchanged)
         function handleDateSelect(selectInfo) {
             clearForm(false);
             formTitle.textContent = 'Add Event';
@@ -266,9 +331,12 @@
                 calendarContainer.classList.remove('admin-open');
             }
         }
-        
-        // ... (Event listeners are unchanged)
-        welcomeSignupButton.addEventListener('click', () => { isLoginMode = false; updateAuthForm(); authModal.classList.add('visible'); });
+
+        welcomeSignupButton.addEventListener('click', () => {
+            isLoginMode = false;
+            updateAuthForm();
+            authModal.classList.add('visible');
+        });
         loginButton.addEventListener('click', () => { isLoginMode = true; updateAuthForm(); authModal.classList.add('visible'); });
         signupButton.addEventListener('click', () => { isLoginMode = false; updateAuthForm(); authModal.classList.add('visible'); });
         logoutButton.addEventListener('click', handleLogout);
